@@ -74,7 +74,6 @@ pub fn setup(
                 ..default()
             },
             camera: Camera {
-                // render before the "main pass" camera
                 order: -1,
                 target: RenderTarget::Image(image_handle),
                 ..default()
@@ -89,13 +88,26 @@ pub fn setup(
 pub fn render_to_image(
     editor_image: Res<EditorImage>,
     mut images: ResMut<Assets<Image>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut contexts: EguiContexts,
 ) {
     if let Some(image) = images.get_mut(&**editor_image) {
         let editor_image_id = contexts.image_id(&editor_image).unwrap();
         let ctx = contexts.ctx_mut();
-        egui::SidePanel::left("Properties").show(ctx, |ui| {});
+        egui::SidePanel::left("Properties")
+            .default_width(250.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    ui.heading("Editor");
+
+                    ui.allocate_space(egui::Vec2::new(1.0, 100.0));
+
+                    ui.horizontal(|ui| {
+                        ui.label("Level Name: ");
+                        ui.text_edit_singleline(&mut "Name");
+                    });
+                });
+            });
 
         egui::CentralPanel::default().show(ctx, |ui| {
             if ui.available_width() as u32 != 0 && ui.available_height() as u32 != 0 {
@@ -107,5 +119,12 @@ pub fn render_to_image(
             }
             ui.image(editor_image_id, ui.available_size());
         });
+    }
+}
+
+pub fn rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<Handle<Mesh>>>) {
+    for mut transform in &mut query {
+        transform.rotate_x(1.5 * time.delta_seconds());
+        transform.rotate_z(1.3 * time.delta_seconds());
     }
 }

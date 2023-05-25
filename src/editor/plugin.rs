@@ -1,7 +1,7 @@
 use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_zorvix_level_editor::prelude::Level;
 
-use super::ui::{render_to_image, setup};
+use super::ui::{render_to_image, rotator_system, setup};
 
 #[derive(Resource, Default, Deref, DerefMut)]
 pub struct EditingLevel(pub Level);
@@ -21,5 +21,6 @@ impl Plugin for EditorPlugin {
         app.insert_resource(EditorPass(RenderLayers::layer(1)));
         app.add_startup_system(setup);
         app.add_system(render_to_image);
+        app.add_system(rotator_system);
     }
 }
