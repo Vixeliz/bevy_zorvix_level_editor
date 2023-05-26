@@ -1,4 +1,5 @@
 pub mod camera;
+pub mod camera_egui;
 pub mod input;
 pub mod level;
 pub mod plugin;

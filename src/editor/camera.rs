@@ -1,8 +1,10 @@
+use super::camera_egui::EguiWantsFocus;
 use bevy::input::mouse::{MouseMotion, MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::window::{PrimaryWindow, WindowRef};
 use bevy_easings::Lerp;
+use bevy_egui::EguiSet;
 use std::f32::consts::{PI, TAU};
 
 /// Bevy plugin that contains the systems for controlling `PanOrbitCamera` components.
@@ -27,21 +29,18 @@ impl Plugin for PanOrbitCameraPlugin {
                     .chain()
                     .in_base_set(PanOrbitCameraSystemSet),
             );
-
-        // {
-        //     app.init_resource::<EguiWantsFocus>()
-        //         .add_system(
-        //             egui::check_egui_wants_focus
-        //                 .after(EguiSet::InitContexts)
-        //                 .before(PanOrbitCameraSystemSet),
-        //         )
-        //         .configure_set(
-        //             PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
-        //                 prev: false,
-        //                 curr: false,
-        //             })),
-        //         );
-        // }
+        app.init_resource::<EguiWantsFocus>()
+            // .add_system(
+            // check_egui_wants_focus
+            //     .after(EguiSet::InitContexts)
+            //     .before(PanOrbitCameraSystemSet),
+            // )
+            .configure_set(
+                PanOrbitCameraSystemSet.run_if(resource_equals(EguiWantsFocus {
+                    prev: false,
+                    curr: false,
+                })),
+            );
     }
 }
 
@@ -265,30 +264,36 @@ fn active_viewport_data(
 
         if input_just_activated {
             // First check if cursor is in the same window as this camera
-            // if let RenderTarget::Window(win_ref) = camera.target {
-            let window = primary_windows
-                .get_single()
-                .expect("Must exist, since the camera is referencing it");
-            if let Some(mut cursor_pos) = window.cursor_position() {
-                // Now check if cursor is within this camera's viewport
-                if let Some(vp_rect) = camera.logical_viewport_rect() {
-                    // Window coordinates have Y starting at the bottom, so we need to reverse
-                    // the y component before comparing with the viewport rect
-                    cursor_pos.y = window.height() - cursor_pos.y;
-                    let cursor_in_vp = cursor_pos.x > vp_rect.0.x
-                        && cursor_pos.x < vp_rect.1.x
-                        && cursor_pos.y > vp_rect.0.y
-                        && cursor_pos.y < vp_rect.1.y;
+            if let RenderTarget::Window(win_ref) = camera.target {
+                let window = match win_ref {
+                    WindowRef::Primary => primary_windows
+                        .get_single()
+                        .expect("Must exist, since the camera is referencing it"),
+                    WindowRef::Entity(entity) => other_windows
+                        .get(entity)
+                        .expect("Must exist, since the camera is referencing it"),
+                };
+                if let Some(mut cursor_pos) = window.cursor_position() {
+                    // Now check if cursor is within this camera's viewport
+                    if let Some(vp_rect) = camera.logical_viewport_rect() {
+                        // Window coordinates have Y starting at the bottom, so we need to reverse
+                        // the y component before comparing with the viewport rect
+                        cursor_pos.y = window.height() - cursor_pos.y;
+                        let cursor_in_vp = cursor_pos.x > vp_rect.0.x
+                            && cursor_pos.x < vp_rect.1.x
+                            && cursor_pos.y > vp_rect.0.y
+                            && cursor_pos.y < vp_rect.1.y;
 
-                    // Only set if camera order is higher. This may overwrite a previous value
-                    // in the case the viewport overlapping another viewport.
-                    if cursor_in_vp && camera.order >= max_cam_order {
-                        new_resource = Some(ActiveCameraData {
-                            entity: Some(entity),
-                            viewport_size: camera.logical_viewport_size(),
-                            window_size: Some(Vec2::new(window.width(), window.height())),
-                        });
-                        max_cam_order = camera.order;
+                        // Only set if camera order is higher. This may overwrite a previous value
+                        // in the case the viewport overlapping another viewport.
+                        if cursor_in_vp && camera.order >= max_cam_order {
+                            new_resource = Some(ActiveCameraData {
+                                entity: Some(entity),
+                                viewport_size: camera.logical_viewport_size(),
+                                window_size: Some(Vec2::new(window.width(), window.height())),
+                            });
+                            max_cam_order = camera.order;
+                        }
                     }
                 }
             }
@@ -310,6 +315,7 @@ fn pan_orbit_camera(
     mut orbit_cameras: Query<(Entity, &mut PanOrbitCamera, &mut Transform, &mut Projection)>,
 ) {
     let mouse_delta = mouse_motion.iter().map(|event| event.delta).sum::<Vec2>();
+
     for (entity, mut pan_orbit, mut transform, mut projection) in orbit_cameras.iter_mut() {
         if !pan_orbit.initialized {
             if let Some(upper_alpha) = pan_orbit.alpha_upper_limit {
