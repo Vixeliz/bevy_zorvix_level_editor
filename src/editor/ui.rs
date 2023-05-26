@@ -1,3 +1,5 @@
+use std::f32::consts::TAU;
+
 use bevy::{
     core_pipeline::clear_color::ClearColorConfig,
     prelude::*,
@@ -12,7 +14,10 @@ use bevy::{
 use bevy_egui::*;
 use egui::Widget;
 
-use super::plugin::{EditorImage, EditorPass};
+use super::{
+    camera::PanOrbitCamera,
+    plugin::{EditorImage, EditorPass},
+};
 
 pub fn setup(
     mut egui_user_textures: ResMut<EguiUserTextures>,
@@ -52,20 +57,22 @@ pub fn setup(
     egui_user_textures.add_image(image_handle.clone());
     commands.insert_resource(EditorImage(image_handle.clone()));
 
-    // The cube that will be rendered to the texture.
-    commands
-        .spawn(PbrBundle {
-            mesh: meshes.add(Mesh::from(shape::Cube { size: 4.0 })),
+    commands.spawn((
+        PbrBundle {
+            mesh: meshes.add(shape::Cube::default().into()),
             material: materials.add(StandardMaterial {
-                base_color: Color::rgb(0.8, 0.7, 0.6),
-                reflectance: 0.02,
-                unlit: false,
+                base_color: Color::WHITE,
                 ..default()
             }),
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
             ..default()
-        })
-        .insert(**editor_pass);
+        },
+        **editor_pass,
+    ));
+
+    commands.spawn(PointLightBundle {
+        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+        ..default()
+    });
 
     commands
         .spawn(Camera3dBundle {
@@ -74,57 +81,59 @@ pub fn setup(
                 ..default()
             },
             camera: Camera {
-                order: -1,
+                order: 0,
                 target: RenderTarget::Image(image_handle),
                 ..default()
             },
-            transform: Transform::from_translation(Vec3::new(0.0, 0.0, 15.0))
-                .looking_at(Vec3::default(), Vec3::Y),
             ..default()
         })
-        .insert(**editor_pass);
+        .insert(**editor_pass)
+        .insert(PanOrbitCamera {
+            beta: TAU * 0.1,
+            radius: 5.0,
+            ..default()
+        });
 }
 
 pub fn render_to_image(
     editor_image: Res<EditorImage>,
     mut images: ResMut<Assets<Image>>,
     mut contexts: EguiContexts,
+    mut pan_orbit_query: Query<&mut PanOrbitCamera>,
 ) {
     if let Some(image) = images.get_mut(&**editor_image) {
-        let editor_image_id = contexts.image_id(&editor_image).unwrap();
-        let ctx = contexts.ctx_mut();
-        egui::SidePanel::left("Properties")
-            .default_width(250.0)
-            .resizable(true)
-            .show(ctx, |ui| {
-                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
-                    ui.heading("Editor");
+        if let Ok(mut pan_orbit) = pan_orbit_query.get_single_mut() {
+            let editor_image_id = contexts.image_id(&editor_image).unwrap();
+            let ctx = contexts.ctx_mut();
+            egui::SidePanel::left("Properties")
+                .default_width(250.0)
+                .resizable(true)
+                .show(ctx, |ui| {
+                    ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                        ui.heading("Editor");
 
-                    ui.allocate_space(egui::Vec2::new(1.0, 100.0));
+                        ui.allocate_space(egui::Vec2::new(1.0, 100.0));
 
-                    ui.horizontal(|ui| {
-                        ui.label("Level Name: ");
-                        ui.text_edit_singleline(&mut "Name");
+                        ui.horizontal(|ui| {
+                            ui.label("Level Name: ");
+                            ui.text_edit_singleline(&mut "Name");
+                        });
                     });
                 });
-            });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if ui.available_width() as u32 != 0 && ui.available_height() as u32 != 0 {
-                image.resize(Extent3d {
-                    width: ui.available_width() as u32,
-                    height: ui.available_height() as u32,
-                    ..default()
-                });
-            }
-            ui.image(editor_image_id, ui.available_size());
-        });
-    }
-}
-
-pub fn rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<Handle<Mesh>>>) {
-    for mut transform in &mut query {
-        transform.rotate_x(1.5 * time.delta_seconds());
-        transform.rotate_z(1.3 * time.delta_seconds());
+            pan_orbit.enabled = egui::CentralPanel::default()
+                .show(ctx, |ui| {
+                    if ui.available_width() as u32 != 0 && ui.available_height() as u32 != 0 {
+                        image.resize(Extent3d {
+                            width: ui.available_width() as u32,
+                            height: ui.available_height() as u32,
+                            ..default()
+                        });
+                    }
+                    ui.image(editor_image_id, ui.available_size());
+                })
+                .response
+                .hovered();
+        }
     }
 }
