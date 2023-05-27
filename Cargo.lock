@@ -1130,8 +1130,6 @@ dependencies = [
  "bevy_infinite_grid",
  "bevy_mod_picking",
  "bevy_prototype_debug_lines",
- "catppuccin",
- "catppuccin-egui",
 ]
 
 [[package]]
@@ -1237,21 +1235,6 @@ name = "bytes"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "89b2fd2a0dcf38d7971e2194b6b6eebab45ae01067456a7fd93d5547a61b70be"
-
-[[package]]
-name = "catppuccin"
-version = "1.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5db0baaeef77583104bf08a4c0040f57540e636e341ff7e7d4711489dd16daaf"
-
-[[package]]
-name = "catppuccin-egui"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c840bcad5f36bba893de10ad208359b4b6bab36c60262af8e7883f2843350475"
-dependencies = [
- "egui",
-]
 
 [[package]]
 name = "cc"

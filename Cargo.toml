@@ -10,7 +10,5 @@ bevy = "0.10.1"
 bevy_easings = "0.10.0"
 bevy_egui = "0.20.3"
 bevy_prototype_debug_lines = "0.10.2"
-catppuccin = "1.2.1"
-catppuccin-egui = "2.0.1"
 bevy_infinite_grid = { git = "https://github.com/ForesightMiningSoftwareCorporation/bevy_infinite_grid", branch = "main" }
-bevy_mod_picking = {version="0.13.0", default_features = false, features = ["backend_egui", "backend_raycast", "debug", "selection", "highlight"]}
+bevy_mod_picking = {version="0.13.0", default_features = false, features = ["backend_egui", "backend_raycast", "selection", "highlight"]}
